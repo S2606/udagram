@@ -1,0 +1,73 @@
+Description: >
+    Shagun Ravi Khemka
+    Udagram Infra Project Bastion Server
+    Creation of EC2 Server which acts as Jump(Bastion) Server. This would be attached to Security group for SSH access.
+
+Parameters:
+    EnvironmentName:
+      Description: An Environment Name that will be prefixed to resources
+      Type: String
+      Default: UdagramInfra
+
+    KeyName: 
+      Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+      Type: AWS::EC2::KeyPair::KeyName
+      Default: UdagramTestKP
+
+    AMI:
+      Description: The Ubuntu Machine Image to be used. Default is set to an AMI in the us-west-2 region.
+      Type: String
+      Default: ami-005bdb005fb00e791
+
+    InstanceType: 
+      Description: Bastion EC2 instance type
+      Type: String
+      Default: t2.medium
+
+Resources: 
+    BastionInstance: 
+        Type: "AWS::EC2::Instance"
+        Properties: 
+          InstanceType: !Ref InstanceType
+          SecurityGroupIds: 
+            - !Ref InstanceSecurityGroup
+          KeyName: !Ref KeyName
+          ImageId: !Ref AMI
+
+          SubnetId: 
+            Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+
+    InstanceSecurityGroup: 
+        Type: "AWS::EC2::SecurityGroup"
+        Properties: 
+          GroupDescription: "Enable SSH access via port 22"
+          VpcId: 
+                Fn::ImportValue: !Sub "${EnvironmentName}-VPCID"  
+          SecurityGroupIngress: 
+            - IpProtocol: tcp
+              FromPort: 22
+              ToPort: 22
+              CidrIp:  "0.0.0.0/0"
+
+Outputs: 
+    InstanceId: 
+      Description: "InstanceId of Bastion instance"
+      Value: 
+        Ref: BastionInstance
+    
+    
+    PublicIP: 
+      Description: "Public IP address of Bastion instance"
+      Value: 
+        "Fn::GetAtt": 
+          - BastionInstance
+          - PublicIp
+
+    sgBastion:
+        Description: Bastion Security Group Details
+        Value: 
+          !GetAtt
+            - InstanceSecurityGroup
+            - GroupId
+        Export:
+          Name: !Sub "${EnvironmentName}-BastionSGID" 
